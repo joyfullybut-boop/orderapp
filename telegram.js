@@ -42,36 +42,57 @@ async function loadPriceList() {
                          window.location.hostname.includes('localhost');
         
         let excelBlob;
+        async function loadPriceList() {
+    // Show loading overlay
+    showFullScreenLoading('Загрузка прайс-листа...');
+    
+    let excelBlob;
+    
+    try {
+        // Check if XLSX library is loaded
+        if (typeof XLSX === 'undefined') {
+            throw new Error('Библиотека XLSX не загружена.\n\nПерезагрузите страницу.');
+        }
         
-                if (isNetlify) {
-    updateLoadingText('Получаем ссылку на файл...');
-    
-    const response = await fetch('/.netlify/functions/getExcel');
-    
-    if (!response.ok) {
-        throw new Error('Netlify Function вернула ошибку: ' + response.status);
-    }
-    
-    const data = await response.json();
-    
-    if (!data.success) {
-        throw new Error(data.error || 'Function не сработала');
-    }
-    
-    updateLoadingText('Скачивание прайс-листа через прокси...');
-    
-    // ← Новый прокси-запрос к той же функции с параметром url
-    const proxyResponse = await fetch(`/.netlify/functions/getExcel?url=${encodeURIComponent(data.downloadUrl)}`);
-    
-    if (!proxyResponse.ok) {
-        throw new Error('Прокси скачивание не удалось: ' + proxyResponse.status);
-    }
-    
-    excelBlob = await proxyResponse.blob();
-    
-    console.log('✅ Загружено через прокси Netlify, размер:', excelBlob.size, 'bytes');
-}
-            // Fallback to direct methods (for other hosts)
+        updateLoadingText('Подключение к серверу...');
+        
+        const isNetlify = window.location.hostname.includes('netlify') || 
+                         window.location.hostname.includes('localhost');
+        
+        if (isNetlify) {
+            // Прокси через Netlify Function — обходим CORS и лимит размера
+            updateLoadingText('Загрузка через Netlify (прокси)...');
+            
+            const response = await fetch('/.netlify/functions/getExcel');
+            
+            if (!response.ok) {
+                throw new Error(`Netlify Function вернула ошибку: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Функция вернула ошибку');
+            }
+            
+            updateLoadingText('Получен файл, обработка...');
+            
+            // Парсим base64 → Blob (это безопасно и без CORS)
+            const binaryString = atob(data.file);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            excelBlob = new Blob([bytes], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            
+            console.log('Файл успешно получен через base64-прокси, размер:', data.size, 'байт');
+        } else {
+            // Fallback для других хостингов (прямые методы)
             updateLoadingText('Подключение к Яндекс.Диску...');
             
             const publicUrl = TELEGRAM_CONFIG.priceListUrl;
@@ -80,14 +101,13 @@ async function loadPriceList() {
             updateLoadingText('Скачивание файла...');
             
             try {
-                // Try direct download first
+                // Прямая попытка
                 const response = await fetch(directUrl);
                 if (!response.ok) throw new Error('Direct download failed');
                 excelBlob = await response.blob();
             } catch (e) {
-                console.log('Direct download failed, trying API method...');
+                console.log('Прямая загрузка не удалась, пробуем API...');
                 
-                // Try API method
                 try {
                     const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(publicUrl)}`;
                     
@@ -102,7 +122,7 @@ async function loadPriceList() {
                     
                     excelBlob = await fileResponse.blob();
                 } catch (apiError) {
-                    console.error('All methods failed:', apiError);
+                    console.error('Все методы не сработали:', apiError);
                     throw new Error('НЕ УДАЛОСЬ ЗАГРУЗИТЬ\n\nИспользуйте "Загрузить Excel вручную"');
                 }
             }
@@ -110,7 +130,7 @@ async function loadPriceList() {
         
         updateLoadingText('Обработка данных...');
         
-        // Parse Excel file
+        // Парсим Excel
         const products = await parseExcelFile(excelBlob);
         
         if (products.length === 0) {
@@ -121,12 +141,12 @@ async function loadPriceList() {
         
         AppState.products = products;
         AppState.expandedGroups = {};
-        AppState.filteredCache = null; // Clear cache
+        AppState.filteredCache = null; // Очищаем кэш фильтров
         await saveToStorage();
         
         updateLoadingText('Готово!');
         
-        // Hide loading and show success
+        // Показываем успех
         setTimeout(() => {
             hideFullScreenLoading();
             showSuccessAnimation(`Загружено ${products.length} товаров`);
@@ -137,13 +157,11 @@ async function loadPriceList() {
         console.error('Error loading price list:', error);
         hideFullScreenLoading();
         
-        // Show error with instructions
         const errorMsg = `❌ ОШИБКА ЗАГРУЗКИ\n\n${error.message}\n\n💡 РЕШЕНИЕ:\n\n1. Используйте "Загрузить Excel вручную"\n2. Или откройте ссылку в браузере и скачайте файл\n\nСсылка: ${TELEGRAM_CONFIG.priceListUrl}`;
         
         alert(errorMsg);
     }
 }
-
 // Submit Order to Telegram with new format
 async function submitOrder() {
     if (AppState.cart.length === 0) {
