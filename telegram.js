@@ -44,32 +44,33 @@ async function loadPriceList() {
         let excelBlob;
         
                 if (isNetlify) {
-            // ✅ НОВЫЙ МЕТОД — обходим лимит 6 МБ
-            updateLoadingText('Получаем ссылку на файл...');
-            
-            const response = await fetch('/.netlify/functions/getExcel');
-            
-            if (!response.ok) {
-                throw new Error('Netlify Function вернула ошибку: ' + response.status);
-            }
-            
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.error || 'Function не сработала');
-            }
-            
-            updateLoadingText('Скачивание прайс-листа...');
-            
-            // Скачиваем файл напрямую от Яндекса (любой размер!)
-            const fileResponse = await fetch(data.downloadUrl);
-            if (!fileResponse.ok) throw new Error('Не удалось скачать файл');
-            
-            excelBlob = await fileResponse.blob();
-            
-            console.log('✅ Загружено напрямую, размер:', excelBlob.size, 'bytes');
-            
-        } else {
+    updateLoadingText('Получаем ссылку на файл...');
+    
+    const response = await fetch('/.netlify/functions/getExcel');
+    
+    if (!response.ok) {
+        throw new Error('Netlify Function вернула ошибку: ' + response.status);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+        throw new Error(data.error || 'Function не сработала');
+    }
+    
+    updateLoadingText('Скачивание прайс-листа через прокси...');
+    
+    // ← Новый прокси-запрос к той же функции с параметром url
+    const proxyResponse = await fetch(`/.netlify/functions/getExcel?url=${encodeURIComponent(data.downloadUrl)}`);
+    
+    if (!proxyResponse.ok) {
+        throw new Error('Прокси скачивание не удалось: ' + proxyResponse.status);
+    }
+    
+    excelBlob = await proxyResponse.blob();
+    
+    console.log('✅ Загружено через прокси Netlify, размер:', excelBlob.size, 'bytes');
+}
             // Fallback to direct methods (for other hosts)
             updateLoadingText('Подключение к Яндекс.Диску...');
             
