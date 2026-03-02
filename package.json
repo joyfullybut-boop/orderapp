@@ -1,0 +1,16 @@
+{
+  "name": "orderapp-pwa",
+  "version": "3.0.2",
+  "description": "OrderApp PWA with Netlify Functions",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'No build needed'",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
