@@ -1,6 +1,9 @@
 {
   "name": "orderapp-pwa",
   "version": "3.0.2",
+  "dependencies": {
+  "node-fetch": "^2.6.7"
+}
   "description": "OrderApp PWA",
   "main": "index.html"
 }
