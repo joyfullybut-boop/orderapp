@@ -1,5 +1,4 @@
-const fetch = require('node-fetch');
-
+// netlify/functions/getExcel.js
 exports.handler = async function(event, context) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -17,7 +16,7 @@ exports.handler = async function(event, context) {
 
     const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(publicLink)}`;
     
-    const apiResponse = await fetch(apiUrl);
+    const apiResponse = await fetch(apiUrl);   // ← встроенный fetch (без node-fetch)
     const apiData = await apiResponse.json();
 
     if (!apiData.href) {
