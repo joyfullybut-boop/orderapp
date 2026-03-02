@@ -1,3 +1,5 @@
+const fetch = require('node-fetch'); // ← верни эту строку (установи пакет обратно)
+
 exports.handler = async function(event, context) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -13,26 +15,30 @@ exports.handler = async function(event, context) {
   try {
     let targetUrl;
 
-    // Если передан ?url=... — скачиваем по этой ссылке (прокси-режим)
-    if (event.queryStringParameters && event.queryStringParameters.url) {
-      targetUrl = event.queryStringParameters.url;
+    // Если вызвали с ?url=... — это прокси-режим (скачиваем по переданной ссылке)
+    if (event.queryStringParameters?.url) {
+      targetUrl = decodeURIComponent(event.queryStringParameters.url);
     } else {
-      // Обычный режим: получаем ссылку от Яндекса
+      // Обычный режим — получаем временную ссылку от Яндекса
       const publicLink = "https://disk.yandex.ru/i/HPfnJ8OPM-ZEYg";
       const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(publicLink)}`;
+      
       const apiResponse = await fetch(apiUrl);
       const apiData = await apiResponse.json();
 
       if (!apiData.href) {
-        throw new Error('Яндекс не дал ссылку на скачивание');
+        throw new Error('Не удалось получить ссылку на скачивание');
       }
+      
       targetUrl = apiData.href;
     }
 
-    // Скачиваем файл (теперь targetUrl может быть и прямой Яндекс-ссылкой)
+    // Скачиваем файл (в любом режиме)
+    console.log('Downloading from:', targetUrl);
     const fileResponse = await fetch(targetUrl);
+    
     if (!fileResponse.ok) {
-      throw new Error(`Скачивание не удалось: ${fileResponse.status}`);
+      throw new Error(`Download failed: ${fileResponse.status}`);
     }
 
     const buffer = await fileResponse.arrayBuffer();
@@ -43,7 +49,7 @@ exports.handler = async function(event, context) {
       headers,
       body: JSON.stringify({
         success: true,
-        file: base64,          // возвращаем base64 (как раньше)
+        file: base64,
         size: buffer.byteLength,
         timestamp: new Date().toISOString()
       })
