@@ -1,4 +1,6 @@
 // netlify/functions/getExcel.js
+// ✅ ИСПРАВЛЕННАЯ ВЕРСИЯ (без node-fetch)
+
 exports.handler = async function(event, context) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -16,14 +18,14 @@ exports.handler = async function(event, context) {
 
     const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(publicLink)}`;
     
-    const apiResponse = await fetch(apiUrl);   // ← встроенный fetch (без node-fetch)
+    const apiResponse = await fetch(apiUrl);
     const apiData = await apiResponse.json();
 
     if (!apiData.href) {
       throw new Error('Не удалось получить ссылку на скачивание');
     }
 
-    console.log('✅ Прямая ссылка получена');
+    console.log('✅ Прямая ссылка получена от Яндекса');
 
     return {
       statusCode: 200,
