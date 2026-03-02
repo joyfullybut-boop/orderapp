@@ -1,6 +1,4 @@
 // netlify/functions/getExcel.js
-// ✅ ИСПРАВЛЕННАЯ ВЕРСИЯ (без node-fetch)
-
 exports.handler = async function(event, context) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -22,10 +20,10 @@ exports.handler = async function(event, context) {
     const apiData = await apiResponse.json();
 
     if (!apiData.href) {
-      throw new Error('Не удалось получить ссылку на скачивание');
+      throw new Error('Яндекс не дал ссылку на скачивание');
     }
 
-    console.log('✅ Прямая ссылка получена от Яндекса');
+    console.log('✅ Прямая ссылка получена');
 
     return {
       statusCode: 200,
